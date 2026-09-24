@@ -1,12 +1,13 @@
 # Versions alignées sur les dépôts officiels Google au 24/09/2026 :
 # - android/nowinandroid (AGP 9.3.2, Gradle 9.7.1)
 # - android/snippets (Compose BOM stable 2026.09.00, DataStore 1.2.1, WorkManager 2.11.2)
-# - android/compose-samples (Kotlin 2.4.20, KSP 2.3.12, Room 2.8.5, core-ktx 1.19.0)
+# - android/compose-samples (Kotlin 2.4.20, KSP 2.3.12, Room 2.8.5, core-ktx 1.19.0, OkHttp 5.5.0)
 [versions]
 agp = "9.3.2"
 kotlin = "2.4.20"
 ksp = "2.3.12"
 coroutines = "1.11.0"
+okhttp = "5.5.0"
 composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 coreKtx = "1.19.0"
@@ -40,6 +41,7 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 

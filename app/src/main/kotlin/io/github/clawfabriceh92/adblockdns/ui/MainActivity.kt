@@ -2,6 +2,7 @@ package io.github.clawfabriceh92.adblockdns.ui
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
@@ -28,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.clawfabriceh92.adblockdns.R
 import io.github.clawfabriceh92.adblockdns.appContainer
 import io.github.clawfabriceh92.adblockdns.ui.screens.ExcludedAppsScreen
@@ -49,16 +55,54 @@ import io.github.clawfabriceh92.adblockdns.ui.screens.StatsScreen
 import io.github.clawfabriceh92.adblockdns.ui.theme.AdBlockTheme
 import io.github.clawfabriceh92.adblockdns.vpn.ProtectionStatus
 import io.github.clawfabriceh92.adblockdns.vpn.VpnController
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 
 class MainActivity : ComponentActivity() {
+    /** Demandes d'activation reçues par intent (raccourci du lanceur, tests adb). */
+    private val startRequests = MutableStateFlow(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) {
+            publishShortcut()
+            handleIntent(intent)
+        }
         setContent {
             AdBlockTheme {
-                ProtectionLauncher { onToggle -> AdBlockApp(onToggle) }
+                ProtectionLauncher(startRequests) { onToggle -> AdBlockApp(onToggle) }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == ACTION_ACTIVER) startRequests.update { it + 1 }
+    }
+
+    /** Raccourci « Activer la protection » sur l'icône (appui long). */
+    private fun publishShortcut() {
+        val shortcut = ShortcutInfoCompat.Builder(this, "activer")
+            .setShortLabel("Activer")
+            .setLongLabel("Activer la protection")
+            .setIcon(IconCompat.createWithResource(this, R.mipmap.ic_launcher))
+            .setIntent(Intent(this, MainActivity::class.java).setAction(ACTION_ACTIVER))
+            .build()
+        try {
+            ShortcutManagerCompat.setDynamicShortcuts(this, listOf(shortcut))
+        } catch (e: IllegalStateException) {
+            // limite de fréquence du système : sans conséquence
+        }
+    }
+
+    companion object {
+        const val ACTION_ACTIVER = "io.github.clawfabriceh92.adblockdns.action.ACTIVER"
     }
 }
 
@@ -67,7 +111,10 @@ class MainActivity : ComponentActivity() {
  * consentement VPN d'Android, demandé une seule fois.
  */
 @Composable
-private fun ProtectionLauncher(content: @Composable (onToggleProtection: (Boolean) -> Unit) -> Unit) {
+private fun ProtectionLauncher(
+    startRequests: StateFlow<Int>,
+    content: @Composable (onToggleProtection: (Boolean) -> Unit) -> Unit,
+) {
     val context = LocalContext.current
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -85,7 +132,7 @@ private fun ProtectionLauncher(content: @Composable (onToggleProtection: (Boolea
         // Refus sans conséquence : la protection fonctionne, seule la notification est masquée.
         requestVpn()
     }
-    content { enable ->
+    val toggle: (Boolean) -> Unit = { enable ->
         if (!enable) {
             VpnController.stop(context)
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -96,6 +143,11 @@ private fun ProtectionLauncher(content: @Composable (onToggleProtection: (Boolea
             requestVpn()
         }
     }
+    val requests by startRequests.collectAsStateWithLifecycle()
+    LaunchedEffect(requests) {
+        if (requests > 0) toggle(true)
+    }
+    content(toggle)
 }
 
 enum class Tab(val label: String, @param:DrawableRes val icon: Int) {

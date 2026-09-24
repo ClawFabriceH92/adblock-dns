@@ -92,7 +92,8 @@ private fun ListCard(item: ListItemUi, onToggle: (Boolean) -> Unit, onImport: ()
     val definition = item.definition
     val state = item.state
     val enabled = state?.enabled == true
-    val installed = state?.installedAt != null
+    val installedAt = state?.installedAt
+    val installed = installedAt != null
     val isCustom = definition.id == BlocklistCatalog.CUSTOM.id
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,11 +115,11 @@ private fun ListCard(item: ListItemUi, onToggle: (Boolean) -> Unit, onImport: ()
         Spacer(Modifier.height(6.dp))
         when {
             item.updating -> LinearProgressIndicator(Modifier.fillMaxWidth())
-            installed && state != null -> MutedText(
+            state != null && installedAt != null -> MutedText(
                 buildString {
                     append(plural(state.entryCount, "domaine"))
                     state.sourceVersion?.let { append(" · version $it") }
-                    state.installedAt?.let { append(" · installée le ${formatDateTime(it)}") }
+                    append(" · installée le ${formatDateTime(installedAt)}")
                 },
             )
             definition.url != null -> MutedText("Pas encore téléchargée : activez-la pour la récupérer.")

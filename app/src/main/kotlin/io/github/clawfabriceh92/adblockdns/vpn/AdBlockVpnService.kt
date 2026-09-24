@@ -222,8 +222,14 @@ class AdBlockVpnService : VpnService() {
      * Résolveur du système ; en cas d'échec, envoi direct en UDP aux serveurs du réseau, sauf si le
      * DNS privé est actif (il ne faut alors jamais envoyer de DNS en clair).
      */
+    @Volatile private var systemResolverCreated = false
+    private val systemResolver by lazy {
+        systemResolverCreated = true
+        SystemResolverUpstream(this, network = { networkMonitor.current.value.network })
+    }
+
     private inner class SystemUpstreamWithFallback : DnsUpstream {
-        private val system = SystemResolverUpstream(network = { networkMonitor.current.value.network })
+        private val system = systemResolver
         private val direct = UdpUpstream(
             servers = { networkMonitor.current.value.dnsServers.filterNot { isOwnTunnelAddress(it) } },
             protector = SocketProtector { socket -> protect(socket) },
@@ -246,6 +252,8 @@ class AdBlockVpnService : VpnService() {
             if (query.source is BlockSource.Builtin) return
             val uid = ownerUid(packet)
             val app = container.appResolver.forUid(uid)
+            // Trace réservée aux builds de débogage (vérifiée par le test sur émulateur).
+            if (BuildConfig.DEBUG) Log.d(TAG, "Bloqué : ${query.domain} (${app.label}, uid $uid)")
             val (category, source) = when (val s = query.source) {
                 is BlockSource.FromList -> s.category.name to s.listId
                 is BlockSource.FromRule -> CATEGORY_RULE to s.rule
@@ -333,6 +341,7 @@ class AdBlockVpnService : VpnService() {
 
     override fun onDestroy() {
         teardown()
+        if (systemResolverCreated) systemResolver.close()
         val status = container.protectionStatus.value
         if (status is ProtectionStatus.Running || status is ProtectionStatus.Starting) {
             container.protectionStatus.value = ProtectionStatus.Stopped

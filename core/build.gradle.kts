@@ -18,6 +18,8 @@ kotlin {
 }
 
 dependencies {
+    // Client HTTP/2 pour DNS-over-HTTPS : Quad9 n'accepte plus le HTTP/1.1 depuis le 15/12/2025.
+    implementation(libs.okhttp)
     testImplementation(kotlin("test-junit"))
     testImplementation(libs.junit)
 }
@@ -26,6 +28,12 @@ tasks.test {
     // Les tests qui téléchargent de vraies listes ou interrogent de vrais résolveurs DoH
     // ne tournent que sur demande : ./gradlew :core:test -PnetworkTests=true
     systemProperty("networkTests", providers.gradleProperty("networkTests").getOrElse("false"))
+    testLogging {
+        // Messages d'erreur complets et sorties des tests réseau lisibles dans le journal de la CI.
+        events("failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true
+    }
 }
 
 // Écrit le classpath de test dans un fichier : utilisé par tools/test_tun_linux.py qui lance

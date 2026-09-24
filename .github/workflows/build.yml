@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Tests unitaires du moteur (module core)
         run: ./gradlew :core:test
@@ -50,13 +50,13 @@ jobs:
         continue-on-error: true
         run: ./gradlew :core:test -PnetworkTests=true --tests '*Real*'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: apk-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: rapports
@@ -64,6 +64,41 @@ jobs:
             core/build/reports/tests/
             app/build/reports/
             app/schemas/
+          if-no-files-found: ignore
+
+  emulateur:
+    name: Test sur émulateur Android (VPN réel)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: apk-debug
+          path: apk
+
+      - name: Activer KVM (accélération matérielle de l'émulateur)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Émulateur API 34, activation de la protection et vérification du blocage DNS
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: python3 tools/test_emulateur.py apk/app-debug.apk
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: captures-emulateur
+          path: build/captures-emulateur/
           if-no-files-found: ignore
 
   release:
@@ -75,14 +110,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Version tirée du tag
         run: |

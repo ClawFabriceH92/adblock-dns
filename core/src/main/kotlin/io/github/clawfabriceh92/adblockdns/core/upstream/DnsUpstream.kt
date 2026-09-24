@@ -5,15 +5,17 @@ import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
-import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
-import java.net.URI
+import java.util.concurrent.TimeUnit
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Résolveur auquel sont transmises les requêtes autorisées. */
 interface DnsUpstream {
@@ -109,59 +111,55 @@ class UdpUpstream(
 }
 
 /**
- * DNS-over-HTTPS (RFC 8484, méthode POST, type application/dns-message). L'identifiant est mis
- * à 0 dans la requête envoyée, comme le recommande la RFC 8484 §4.1 pour faciliter la mise en
- * cache, puis restauré dans la réponse.
+ * DNS-over-HTTPS (RFC 8484, méthode POST, type application/dns-message) avec OkHttp, qui
+ * négocie HTTP/2 : Quad9 a retiré le HTTP/1.1 de son service DoH le 15/12/2025 (billet
+ * « DOH HTTP/1.1 Retirement », quad9.net). L'identifiant est mis à 0 dans la requête envoyée,
+ * comme le recommande la RFC 8484 §4.1 pour faciliter la mise en cache, puis restauré.
  */
 class DohUpstream(
     private val endpoint: String,
-    private val timeoutMs: Int = 5_000,
+    private val client: OkHttpClient = sharedClient,
 ) : DnsUpstream {
 
     override fun resolve(query: ByteArray): ByteArray {
         if (query.size < DnsMessages.HEADER_SIZE) throw IOException("Requête DNS trop courte")
-        val body = DnsMessages.withId(query, 0)
-        val connection = URI(endpoint).toURL().openConnection() as HttpURLConnection
-        connection.connectTimeout = timeoutMs
-        connection.readTimeout = timeoutMs
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", MEDIA_TYPE)
-        connection.setRequestProperty("Accept", MEDIA_TYPE)
-        connection.setFixedLengthStreamingMode(body.size)
-        connection.outputStream.use { it.write(body) }
-        val code = connection.responseCode
-        if (code != HttpURLConnection.HTTP_OK) {
-            connection.errorStream?.use { it.readBytes() }
-            throw IOException("DNS-over-HTTPS : HTTP $code")
+        val request = Request.Builder()
+            .url(endpoint)
+            .header("Accept", MEDIA_TYPE)
+            .post(DnsMessages.withId(query, 0).toRequestBody(DNS_MESSAGE))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("DNS-over-HTTPS : HTTP ${response.code}")
+            val body = response.body
+            if (body.contentLength() > MAX_RESPONSE) throw IOException("DNS-over-HTTPS : réponse trop grande")
+            val bytes = body.bytes()
+            if (bytes.size > MAX_RESPONSE || bytes.size < DnsMessages.HEADER_SIZE || !DnsMessages.isResponse(bytes)) {
+                throw IOException("DNS-over-HTTPS : réponse invalide")
+            }
+            return DnsMessages.withId(bytes, DnsMessages.id(query))
         }
-        // Lire le corps entier puis fermer le flux (sans disconnect) garde la connexion réutilisable.
-        val response = connection.inputStream.use { readAtMost(it, 65_535) }
-        if (response.size < DnsMessages.HEADER_SIZE || !DnsMessages.isResponse(response)) {
-            throw IOException("DNS-over-HTTPS : réponse invalide")
-        }
-        return DnsMessages.withId(response, DnsMessages.id(query))
-    }
-
-    private fun readAtMost(input: InputStream, limit: Int): ByteArray {
-        val buffer = ByteArray(limit + 1)
-        var total = 0
-        while (total < buffer.size) {
-            val n = input.read(buffer, total, buffer.size - total)
-            if (n < 0) break
-            total += n
-        }
-        if (total > limit) throw IOException("DNS-over-HTTPS : réponse trop grande")
-        return buffer.copyOf(total)
     }
 
     companion object {
         const val MEDIA_TYPE = "application/dns-message"
+        private val DNS_MESSAGE = MEDIA_TYPE.toMediaType()
+        private const val MAX_RESPONSE = 65_535
 
         /** Documenté par Cloudflare : developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/ */
         const val CLOUDFLARE = "https://cloudflare-dns.com/dns-query"
 
-        /** Documenté par Quad9 : quad9.net (service DoH sur dns.quad9.net). */
+        /** Documenté par Quad9 : quad9.net (service DoH sur dns.quad9.net, HTTP/2 uniquement). */
         const val QUAD9 = "https://dns.quad9.net/dns-query"
+
+        /** Client partagé : connexions HTTP/2 réutilisées d'une requête et d'un résolveur à l'autre. */
+        private val sharedClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .callTimeout(6, TimeUnit.SECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .build()
+        }
     }
 }
