@@ -68,6 +68,7 @@ class HashedDomainSet private constructor(private val sortedHashes: LongArray) {
         private const val MAGIC = 0x41444248
         private const val MAX_ENTRIES = 50_000_000
         private const val BLOCK_ENTRIES = 8192
+        private const val HEADER_BYTES = 12L
 
         val EMPTY = HashedDomainSet(LongArray(0))
 
@@ -86,6 +87,21 @@ class HashedDomainSet private constructor(private val sortedHashes: LongArray) {
         fun fromDomains(domains: Iterable<String>): HashedDomainSet {
             val list = domains.map { DomainHash.hash(it) }
             return fromHashes(list.toLongArray())
+        }
+
+        /**
+         * Lit seulement l'en-tête : nombre d'entrées si le fichier a été écrit par [writeTo] avec la
+         * version actuelle de [DomainHash] et a la bonne taille, sinon null (à reconstruire).
+         */
+        fun peekEntryCount(input: InputStream, totalBytes: Long): Int? {
+            val data = DataInputStream(input)
+            return try {
+                if (data.readInt() != MAGIC || data.readInt() != DomainHash.VERSION) return null
+                val count = data.readInt()
+                count.takeIf { it in 0..MAX_ENTRIES && totalBytes == HEADER_BYTES + it * 8L }
+            } catch (e: IOException) {
+                null
+            }
         }
 
         /**

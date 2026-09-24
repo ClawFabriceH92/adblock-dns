@@ -62,6 +62,17 @@ class HashedDomainSetTest {
     }
 
     @Test
+    fun `lecture de l'en-tete seul`() {
+        val out = ByteArrayOutputStream()
+        set.writeTo(out)
+        val bytes = out.toByteArray()
+        assertEquals(2, HashedDomainSet.peekEntryCount(ByteArrayInputStream(bytes), bytes.size.toLong()))
+        assertNull(HashedDomainSet.peekEntryCount(ByteArrayInputStream(bytes), bytes.size - 1L), "taille incohérente")
+        assertNull(HashedDomainSet.peekEntryCount(ByteArrayInputStream(ByteArray(12)), 12))
+        assertNull(HashedDomainSet.peekEntryCount(ByteArrayInputStream(ByteArray(3)), 3))
+    }
+
+    @Test
     fun `fichier corrompu ou tronque refuse`() {
         val out = ByteArrayOutputStream()
         HashedDomainSet.fromDomains((1..10_000).map { "d$it.example" }).writeTo(out)
