@@ -126,6 +126,11 @@ jobs:
             echo "::error::Le tag doit être de la forme vX.Y.Z (reçu : $GITHUB_REF_NAME)"
             exit 1
           fi
+          # versionCode = X*10000 + Y*100 + Z : il doit croître à chaque release, d'où Y et Z < 100.
+          if (( BASH_REMATCH[2] > 99 || BASH_REMATCH[3] > 99 )); then
+            echo "::error::Mineure et correctif doivent rester inférieurs à 100 (reçu : $VERSION)"
+            exit 1
+          fi
           CODE=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
