@@ -22,6 +22,7 @@ import io.github.clawfabriceh92.adblockdns.data.db.AppCount
 import io.github.clawfabriceh92.adblockdns.data.db.AppDatabase
 import io.github.clawfabriceh92.adblockdns.data.db.AppRef
 import io.github.clawfabriceh92.adblockdns.data.db.BlockedEventEntity
+import io.github.clawfabriceh92.adblockdns.data.db.BucketCount
 import io.github.clawfabriceh92.adblockdns.data.db.CategoryCount
 import io.github.clawfabriceh92.adblockdns.data.db.ListStateEntity
 import io.github.clawfabriceh92.adblockdns.data.db.RuleEntity
@@ -160,27 +161,46 @@ data class StatsUiState(
     val categories: List<CategoryCount> = emptyList(),
 )
 
+/**
+ * Fenêtre d'une période statistique en « cases » (heures ou jours) alignées sur l'heure locale.
+ * Les numéros de case sont ceux calculés en SQL : (timestamp + décalage horaire) / durée.
+ */
+data class StatsWindow(val firstBucket: Long, val lastBucket: Long, val sinceMs: Long, val offsetMs: Long) {
+    companion object {
+        fun of(period: StatsPeriod, nowMs: Long, offsetMs: Long): StatsWindow {
+            val last = (nowMs + offsetMs) / period.bucketMs
+            val first = last - period.buckets + 1
+            return StatsWindow(first, last, first * period.bucketMs - offsetMs, offsetMs)
+        }
+    }
+
+    /** Série complète de la fenêtre : une valeur par case, 0 pour les cases sans blocage. */
+    fun series(histogram: List<BucketCount>): List<Int> {
+        val counts = histogram.associate { it.bucket to it.count }
+        return (firstBucket..lastBucket).map { counts[it] ?: 0 }
+    }
+
+    /** Début de la case en heure UTC (ms), pour l'affichage. */
+    fun bucketStartMs(bucket: Long, period: StatsPeriod): Long = bucket * period.bucketMs - offsetMs
+}
+
 class StatsViewModel(private val container: AppContainer) : ViewModel() {
     private val period = MutableStateFlow(StatsPeriod.DAY)
 
     val state: StateFlow<StatsUiState> = period.flatMapLatest { p ->
         val now = System.currentTimeMillis()
-        val offset = TimeZone.getDefault().getOffset(now).toLong()
-        val lastBucket = (now + offset) / p.bucketMs
-        val firstBucket = lastBucket - p.buckets + 1
-        val since = firstBucket * p.bucketMs - offset
+        val window = StatsWindow.of(p, now, TimeZone.getDefault().getOffset(now).toLong())
         combine(
-            container.journal.histogram(since, p.bucketMs, offset),
-            container.journal.topApps(since, 5),
-            container.journal.categories(since),
+            container.journal.histogram(window.sinceMs, p.bucketMs, window.offsetMs),
+            container.journal.topApps(window.sinceMs, 5),
+            container.journal.categories(window.sinceMs),
         ) { histogram, top, categories ->
-            val counts = histogram.associate { it.bucket to it.count }
-            val series = (0 until p.buckets).map { counts[firstBucket + it] ?: 0 }
+            val series = window.series(histogram)
             StatsUiState(
                 period = p,
                 series = series,
-                firstLabel = bucketLabel(p, firstBucket, offset),
-                lastLabel = bucketLabel(p, lastBucket, offset),
+                firstLabel = bucketLabel(p, window, window.firstBucket),
+                lastLabel = bucketLabel(p, window, window.lastBucket),
                 total = series.sum(),
                 topApps = top,
                 categories = categories.sortedByDescending { it.count },
@@ -192,8 +212,8 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
         period.value = p
     }
 
-    private fun bucketLabel(p: StatsPeriod, bucket: Long, offset: Long): String =
-        if (p == StatsPeriod.DAY) "${bucket % 24} h" else formatDayLabel(bucket * p.bucketMs - offset)
+    private fun bucketLabel(p: StatsPeriod, window: StatsWindow, bucket: Long): String =
+        if (p == StatsPeriod.DAY) "${bucket % 24} h" else formatDayLabel(window.bucketStartMs(bucket, p))
 }
 
 // ---------------------------------------------------------------- Listes
