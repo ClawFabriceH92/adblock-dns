@@ -21,8 +21,8 @@ root, avec des listes de blocage locales et sans dépendance à un service tiers
 
 | # | Question | Décision | Conséquence technique |
 |---|---|---|---|
-| 1 | Mécanisme de blocage : VPN local / DNS privé / root | _en attente_ | détermine permissions, VpnService, UI |
-| 2 | Sources des listes de blocage et format | _à venir_ | parseur, taille embarquée, fréquence de MAJ |
+| 1 | Mécanisme de blocage | **VPN local (`VpnService`)** + listes de blocage locales, sans root | permission `BIND_VPN_SERVICE`, service au premier plan, écran d'autorisation VPN Android, options « démarrer au boot » et « applications exclues » |
+| 2 | Sources des listes de blocage et format | _en attente_ | parseur, taille embarquée, fréquence de MAJ |
 | 3 | Périmètre : pubs seules ou pubs + traqueurs + malwares | _à venir_ | choix de listes, mode strict |
 | 4 | Journal : historique des blocages ou compteur seul | _à venir_ | stockage local, écran de statistiques |
 | 5 | Règles manuelles (liste blanche / noire) | _à venir_ | écran de règles, persistance |
