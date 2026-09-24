@@ -87,6 +87,10 @@ python3 tools/test_emulateur.py app/build/outputs/apk/debug/app-debug.apk
 tools/maj_liste_embarquee.sh
 ```
 
+Base de données : le schéma Room est versionné dans `app/schemas/`. Après toute modification
+d'une table, augmenter la version de `AppDatabase`, versionner le nouveau schéma produit par la
+compilation et écrire la migration ; la CI échoue si le schéma du dépôt n'est plus à jour.
+
 ## Release signée
 
 Un tag `vX.Y.Z` déclenche la CI : APK release signé, vérifié par `apksigner`, publié en release

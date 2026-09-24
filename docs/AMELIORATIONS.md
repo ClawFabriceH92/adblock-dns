@@ -27,10 +27,6 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 - **Créer la clé de signature et les quatre secrets** (voir README). Sans eux, le job de release
   échoue volontairement avec un message explicite. Sauvegarder la clé hors du dépôt : sa perte
   empêche toute mise à jour de l'application installée.
-- **Versionner le schéma Room** (`app/schemas/`) : nécessaire pour écrire les migrations dès
-  qu'une table changera. Room le génère à la compilation, mais une invocation Gradle suivante
-  peut l'effacer (tâche `copyRoomSchemas` « NO-SOURCE » pendant le lint, constaté en CI) : la CI
-  l'affiche donc dans son journal juste après la compilation.
 - **Choisir une licence** pour le code. L'instantané hagezi embarqué dans l'APK est sous GPL-3.0 ;
   une licence compatible (GPL-3.0) simplifierait la redistribution. Point juridique à confirmer :
   je ne suis pas juriste.
@@ -45,6 +41,7 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 | Inspection CNAME hors du bloc protégé : une erreur du filtre pouvait remonter au lieu de laisser passer la réponse (fail-open incomplet) | relecture du code, avant publication | inspection entièrement protégée |
 | Règles cosmétiques adblock (`exemple.com##.pub`) lues comme des domaines | relecture du code, avant publication | rejetées |
 | `versionCode` non croissant si mineure ou correctif ≥ 100 | relecture de la CI | tag refusé avec un message explicite |
+| Schéma Room annoncé dans l'artefact « rapports » sans vérification ; sa présence n'y est pas garantie (tâche `copyRoomSchemas` « NO-SOURCE » pendant le lint) | journal de la CI | schéma versionné dans `app/schemas/`, la CI vérifie qu'il reste à jour |
 | Maquette : saisie inversée, perte du focus, injection HTML, « ✕ » sans effet | vérification Playwright | corrigés (24/24) |
 
 ## 4. Propositions d'amélioration
