@@ -128,6 +128,7 @@ raccourci « Activer la protection », « Annuler » après « Autoriser ».
 - APK signé publié en release GitHub, nom de fichier versionné, icône dédiée.
 
 État au 24/09/2026 : la chaîne de release est prête (il manque les secrets de signature, voir
-README) ; le blocage réel est vérifié sur interface TUN Linux et sur émulateur Android en CI ;
-les points « téléphone réel » (boot, applications exclues, attribution, autonomie) restent à
-vérifier avec la liste de contrôle de `docs/AMELIORATIONS.md`.
+README) ; le blocage réel est vérifié sur interface TUN Linux et sur émulateur Android en CI,
+ainsi que « Autoriser » sans redémarrage (émulateur) ; les points « téléphone réel » (boot,
+applications exclues, attribution, autonomie) restent à vérifier avec la liste de contrôle de
+`docs/AMELIORATIONS.md`.

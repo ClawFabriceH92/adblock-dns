@@ -117,10 +117,12 @@ En local, un fichier `keystore.properties` (non versionné) avec `storeFile`, `s
 | Vérification | Résultat | Où |
 |---|---|---|
 | Tests unitaires du moteur | 79 tests, 0 échec | local et CI |
+| Tests unitaires de l'application (fenêtres des statistiques 24 h / 7 j / 30 j) | 4 tests, 0 échec | CI |
 | Vraies listes : hagezi Pro, TIF medium, StevenBlack | nombre de domaines compilés = nombre annoncé dans l'en-tête ; mise à jour conditionnelle (HTTP 304) confirmée | local et CI |
 | Moteur branché sur une vraie interface TUN, client DNS indépendant (dnspython) | 15/15 contrôles, IPv4 et IPv6, sommes de contrôle acceptées par le noyau, latence ~0,3 ms | CI (13/13 en local, sans IPv6) |
 | Compilation Android, lint | réussis | CI |
-| Émulateur Android : tunnel monté, domaines listés bloqués, autres domaines résolus | voir le dernier passage de la CI | CI |
+| Liste embarquée présente et lisible dans l'APK (`tools/verifier_apk.py`) | 225 658 domaines | CI |
+| Émulateur Android 14 (API 34), VPN réel : tunnel monté, 4 domaines de la liste bloqués, domaines ordinaires résolus, blocages journalisés, « Autoriser » effectif sans redémarrage (les autres domaines restent bloqués), aucun plantage | 13/13 contrôles (24/09/2026) | CI |
 | Maquette | 24/24 contrôles | local |
 | **Téléphone réel** (boot, applications exclues, attribution par application, autonomie) | **non vérifié** | — |
 

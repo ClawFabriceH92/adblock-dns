@@ -45,6 +45,15 @@ jobs:
       - name: Liste embarquée présente et lisible dans l'APK
         run: python3 tools/verifier_apk.py app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Schéma Room généré (affiché pour être versionné)
+        run: |
+          test -d app/schemas || { echo "::error::Aucun schéma Room généré"; exit 1; }
+          for f in $(find app/schemas -name '*.json' | sort); do
+            echo "== $f sha256=$(sha256sum < "$f" | cut -d' ' -f1)"
+            cat "$f"; echo
+            echo "base64=$(base64 -w0 "$f")"
+          done
+
       - name: Lint Android
         run: ./gradlew :app:lintDebug
 

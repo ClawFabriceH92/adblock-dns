@@ -13,7 +13,7 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 | 1 | Activation | Accueil › « Activer la protection », accepter la demande VPN d'Android | icône clé dans la barre d'état, « Protection active » |
 | 2 | Blocage réel | naviguer sur un site d'information chargé en publicités | encarts vides, lignes dans le Journal |
 | 3 | Attribution | Journal : colonne application | noms réels des applications (selon la version d'Android, sinon « Système Android » ou « Application inconnue ») |
-| 4 | « Autoriser » | autoriser un domaine d'un site cassé, recharger la page | le site fonctionne, sans redémarrer la protection |
+| 4 | « Autoriser » | autoriser un domaine d'un site cassé, recharger la page | le site fonctionne, sans redémarrer la protection (déjà vérifié sur émulateur) |
 | 5 | Démarrage au boot | redémarrer le téléphone | protection relancée seule |
 | 6 | Applications exclues | exclure l'application bancaire | elle fonctionne ; ses requêtes n'apparaissent plus |
 | 7 | Changement de réseau | passer du Wi-Fi au réseau mobile et inversement | la navigation continue |
@@ -27,13 +27,27 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 - **Créer la clé de signature et les quatre secrets** (voir README). Sans eux, le job de release
   échoue volontairement avec un message explicite. Sauvegarder la clé hors du dépôt : sa perte
   empêche toute mise à jour de l'application installée.
-- **Versionner le schéma Room** (`app/schemas/…/1.json`, produit par la CI dans l'artefact
-  `rapports`) : nécessaire pour écrire les migrations dès qu'une table changera.
+- **Versionner le schéma Room** (`app/schemas/`) : nécessaire pour écrire les migrations dès
+  qu'une table changera. Room le génère à la compilation, mais une invocation Gradle suivante
+  peut l'effacer (tâche `copyRoomSchemas` « NO-SOURCE » pendant le lint, constaté en CI) : la CI
+  l'affiche donc dans son journal juste après la compilation.
 - **Choisir une licence** pour le code. L'instantané hagezi embarqué dans l'APK est sous GPL-3.0 ;
   une licence compatible (GPL-3.0) simplifierait la redistribution. Point juridique à confirmer :
   je ne suis pas juriste.
 
-## 3. Propositions d'amélioration
+## 3. Défauts trouvés en cours de route (corrigés)
+
+| Défaut | Trouvé par | Correction |
+|---|---|---|
+| Liste embarquée absente de l'APK : l'asset `hagezi-pro.txt.gz` était introuvable, la protection démarrait avec 0 règle et ne bloquait rien | test sur émulateur (5/10) | asset renommé en `.gzip`, gzip reconnu à sa signature, contrôle de l'APK en CI, alerte « Aucune règle de blocage » à l'accueil |
+| DoH Quad9 en échec : HTTP/1.1 retiré par Quad9 le 15/12/2025 | test contre les vrais services (CI) | client OkHttp (HTTP/2) |
+| Plage `192.0.2.0/24` déjà utilisée par le réseau du conteneur de test : les paquets n'arrivaient pas au tunnel | test TUN Linux | plage du tunnel choisie parmi celles qui sont libres, dans l'application aussi |
+| Inspection CNAME hors du bloc protégé : une erreur du filtre pouvait remonter au lieu de laisser passer la réponse (fail-open incomplet) | relecture du code, avant publication | inspection entièrement protégée |
+| Règles cosmétiques adblock (`exemple.com##.pub`) lues comme des domaines | relecture du code, avant publication | rejetées |
+| `versionCode` non croissant si mineure ou correctif ≥ 100 | relecture de la CI | tag refusé avec un message explicite |
+| Maquette : saisie inversée, perte du focus, injection HTML, « ✕ » sans effet | vérification Playwright | corrigés (24/24) |
+
+## 4. Propositions d'amélioration
 
 Classées par rapport utilité / effort. Aucune n'est implémentée.
 
@@ -61,7 +75,7 @@ Classées par rapport utilité / effort. Aucune n'est implémentée.
 10. **Passage à targetSdk 37** quand les changements de comportement d'Android 17 auront été
     passés en revue (compileSdk est déjà à 37).
 
-## 4. Sources utilisées
+## 5. Sources utilisées
 
 - Formats, tailles et licence des listes : [README de hagezi/dns-blocklists](https://github.com/hagezi/dns-blocklists)
   et en-têtes des fichiers téléchargés le 24/09/2026 ; [StevenBlack/hosts](https://github.com/StevenBlack/hosts) (licence MIT).
@@ -78,3 +92,7 @@ Classées par rapport utilité / effort. Aucune n'est implémentée.
 - Versions des outils : [android/nowinandroid](https://github.com/android/nowinandroid),
   [android/snippets](https://github.com/android/snippets), [android/compose-samples](https://github.com/android/compose-samples).
 - Émulateur en CI : [ReactiveCircus/android-emulator-runner](https://github.com/ReactiveCircus/android-emulator-runner).
+- Assets `.gz` : code d'aapt (`frameworks/base/tools/aapt/Package.cpp`, extension retirée et contenu
+  décompressé) cité dans [sweetalert2/sweetalert2#347](https://github.com/sweetalert2/sweetalert2/issues/347)
+  (11/2016) ; extension retirée avec le plugin Gradle récent : [ionic-team/capacitor#5844](https://github.com/ionic-team/capacitor/issues/5844)
+  (08/2022) ; constaté ici sur émulateur (`FileNotFoundException`).
