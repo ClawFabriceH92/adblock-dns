@@ -21,6 +21,7 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 | 9 | DNS privé | Réglages Android › DNS privé : « Automatique » ou « Désactivé » | blocage effectif ; bandeau d'alerte si un nom d'hôte est imposé |
 | 10 | Autonomie | Réglages Android › Batterie, après 24 h | consommation faible (aucune boucle active dans le service) |
 | 11 | Mise à jour | Listes › « Mettre à jour les listes » | nombre de domaines et date mis à jour |
+| 12 | Mise à jour automatique | laisser le téléphone en Wi-Fi, puis ouvrir Listes dans les jours qui suivent l'installation | date d'installation de la liste postérieure à celle de l'application, sans action de votre part |
 
 ## 2. À faire avant la première release
 
@@ -46,31 +47,28 @@ artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dép
 
 ## 4. Propositions d'amélioration
 
-Classées par rapport utilité / effort. Aucune n'est implémentée.
+Classées par rapport utilité / effort. Aucune n'est implémentée. (La mise à jour automatique
+hebdomadaire, première proposition de cette liste, est activée par défaut depuis le 24/09/2026.)
 
-1. **Mise à jour automatique activée par défaut** (hebdomadaire, Wi-Fi). Les en-têtes des listes
-   hagezi annoncent « Expires: 8 hours » : un instantané vieux de plusieurs mois perd en
-   efficacité. Elle est désactivée par défaut pour respecter la décision de cadrage n° 2 ; c'est
-   un réglage à changer si vous êtes d'accord.
-2. **Liste optionnelle « DoH/VPN/TOR/Proxy Bypass » de hagezi** (16 471 entrées selon son README) :
+1. **Liste optionnelle « DoH/VPN/TOR/Proxy Bypass » de hagezi** (16 471 entrées selon son README) :
    elle bloque les serveurs DNS chiffrés publics, ce qui oblige les applications qui en utilisent
    un à repasser par le filtre. L'application elle-même, exclue de son tunnel, n'est pas gênée pour
    ses propres résolveurs Cloudflare ou Quad9.
-3. **Tuile des réglages rapides** et **pause temporaire** (15 min, 1 h) pour dépanner un site sans
+2. **Tuile des réglages rapides** et **pause temporaire** (15 min, 1 h) pour dépanner un site sans
    aller dans l'application.
-4. **Tests de l'interface et des ViewModels** (Robolectric, tests Compose) : le module `app` n'a
+3. **Tests de l'interface et des ViewModels** (Robolectric, tests Compose) : le module `app` n'a
    qu'une classe de tests unitaires (fenêtres des statistiques) ; le reste n'est couvert que par
    la compilation, le lint et le test sur émulateur.
-5. **Interception des DNS codés en dur** (8.8.8.8, 1.1.1.1…) : router ces adresses dans le tunnel
+4. **Interception des DNS codés en dur** (8.8.8.8, 1.1.1.1…) : router ces adresses dans le tunnel
    pour filtrer aussi les applications qui ignorent le DNS du système. Effort réel : il faut
    laisser passer ou refuser proprement le reste de leur trafic (HTTPS vers ces adresses).
-6. **Export du journal** (CSV) et écran de détail par application.
-7. **DNS sur TCP dans le tunnel** : aujourd'hui refusé par un RST (échec immédiat) ; utile
+5. **Export du journal** (CSV) et écran de détail par application.
+6. **DNS sur TCP dans le tunnel** : aujourd'hui refusé par un RST (échec immédiat) ; utile
    seulement pour les très grosses réponses DNS, que le résolveur amont traite déjà en TCP.
-8. **Résolveur DoH personnalisé** (URL libre) et DNS-over-TLS.
-9. **Widget** d'écran d'accueil avec le compteur du jour.
-10. **Passage à targetSdk 37** quand les changements de comportement d'Android 17 auront été
-    passés en revue (compileSdk est déjà à 37).
+7. **Résolveur DoH personnalisé** (URL libre) et DNS-over-TLS.
+8. **Widget** d'écran d'accueil avec le compteur du jour.
+9. **Passage à targetSdk 37** quand les changements de comportement d'Android 17 auront été
+   passés en revue (compileSdk est déjà à 37).
 
 ## 5. Sources utilisées
 

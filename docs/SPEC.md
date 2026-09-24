@@ -109,7 +109,7 @@ Ce qui diffère du cadrage, et pourquoi :
 | DNS amont « système » | serveurs du réseau | résolveur d'Android (`DnsResolver.rawQuery`), repli UDP direct | respecte le DNS privé (DoT) du système ; la doc de `LinkProperties` interdit le DNS en clair quand il est actif |
 | DoH | Cloudflare, Quad9 | OkHttp (HTTP/2) | Quad9 a retiré le HTTP/1.1 de son DoH le 15/12/2025 |
 | Version minimale | non fixée | Android 10 (API 29) | attribution des requêtes aux applications (`getConnectionOwnerUid`), `DnsResolver`, `setMetered` |
-| Mise à jour automatique | « à la demande » | à la demande + option hebdomadaire en Wi-Fi, **désactivée par défaut** | respecte la décision n° 2 tout en laissant le choix |
+| Mise à jour automatique | « à la demande » | à la demande + hebdomadaire en Wi-Fi, **activée par défaut** (décision du 24/09/2026), désactivable dans les Réglages | les listes hagezi annoncent « Expires: 8 hours » : un instantané embarqué vieillit vite |
 | Journal | journal détaillé | requêtes bloquées uniquement, conservées 30 jours | couvre les statistiques les plus longues (30 j) sans croissance illimitée |
 
 Ajouts non prévus au cadrage : anti-camouflage CNAME (désactivable), domaine canari Firefox,

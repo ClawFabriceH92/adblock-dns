@@ -31,7 +31,8 @@ data class Settings(
     val upstream: UpstreamChoice = UpstreamChoice.SYSTEM,
     val excludedApps: Set<String> = emptySet(),
     val cnameInspection: Boolean = true,
-    val autoUpdateLists: Boolean = false,
+    /** Activée par défaut : un instantané de liste vieillit vite (hagezi annonce « Expires: 8 hours »). */
+    val autoUpdateLists: Boolean = true,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -46,7 +47,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                     ?: UpstreamChoice.SYSTEM,
                 excludedApps = p[EXCLUDED_APPS] ?: emptySet(),
                 cnameInspection = p[CNAME_INSPECTION] ?: true,
-                autoUpdateLists = p[AUTO_UPDATE_LISTS] ?: false,
+                autoUpdateLists = p[AUTO_UPDATE_LISTS] ?: true,
             )
         }
 

@@ -20,7 +20,7 @@ chargent ni dans le navigateur, ni dans les applications.
   répartition par catégorie.
 - **Listes** : hagezi Multi PRO embarquée (active d'office), hagezi Threat Intelligence et
   StevenBlack en option, import d'un fichier (domaines, hosts ou adblock), mise à jour à la
-  demande ou hebdomadaire en Wi-Fi (option).
+  demande et automatique chaque semaine en Wi-Fi (activée par défaut, désactivable).
 - **Règles** : listes blanche et noire manuelles, jokers (`*.exemple.com`), URL collée acceptée.
 - **Réglages** : résolveur amont (DNS du téléphone, Cloudflare ou Quad9 chiffrés), démarrage au
   boot, anti-camouflage CNAME, applications exclues du tunnel, purge du journal, accès au VPN

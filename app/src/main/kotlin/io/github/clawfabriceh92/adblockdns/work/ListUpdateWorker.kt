@@ -11,11 +11,16 @@ import androidx.work.WorkerParameters
 import io.github.clawfabriceh92.adblockdns.appContainer
 import io.github.clawfabriceh92.adblockdns.data.UpdateOutcome
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
 
-/** Mise à jour automatique des listes (option « Mise à jour automatique », désactivée par défaut). */
+/** Mise à jour automatique des listes (option « Mise à jour automatique », activée par défaut). */
 class ListUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val outcomes = applicationContext.appContainer.blocklists.updateAll()
+        val blocklists = applicationContext.appContainer.blocklists
+        // Au premier lancement, la liste embarquée s'installe en parallèle : l'attendre évite
+        // qu'elle écrase ensuite la liste fraîchement téléchargée.
+        blocklists.installed.first { it }
+        val outcomes = blocklists.updateAll()
         return if (outcomes.values.any { it is UpdateOutcome.Failed }) Result.retry() else Result.success()
     }
 }

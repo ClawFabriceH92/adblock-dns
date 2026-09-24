@@ -98,7 +98,7 @@ fun SettingsScreen(
             HorizontalDivider()
             ToggleRow(
                 "Mise à jour automatique des listes",
-                "Une fois par semaine, en Wi-Fi uniquement",
+                "Une fois par semaine, en Wi-Fi (réseau non facturé) et avec une batterie suffisante",
                 settings.autoUpdateLists,
                 viewModel::setAutoUpdate,
             )
