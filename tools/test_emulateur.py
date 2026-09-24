@@ -7,7 +7,9 @@ depuis le téléphone que :
 - le tunnel VPN est monté ;
 - des domaines de la liste embarquée ne se résolvent plus (NXDOMAIN) ;
 - des domaines ordinaires se résolvent toujours ;
-- le service a bien journalisé les blocages (trace des builds de débogage).
+- le service a bien journalisé les blocages (trace des builds de débogage) ;
+- « Autoriser » dans le Journal rétablit la résolution du domaine sans redémarrage, les autres
+  domaines restant bloqués.
 Des captures de chaque écran sont enregistrées dans build/captures-emulateur/.
 
 Prérequis : un émulateur démarré et `adb` dans le PATH.
@@ -64,19 +66,55 @@ def capture(nom: str) -> None:
     print(f"   capture : {nom}.png ({len(png)} octets)")
 
 
-def toucher_texte(texte: str) -> bool:
-    """Touche le premier élément affichant exactement ce texte (arbre d'accessibilité)."""
+def noeuds_ecran() -> list[ET.Element]:
+    """Éléments affichés, dans l'ordre de l'arbre d'accessibilité (uiautomator)."""
     shell("uiautomator dump /sdcard/ui.xml >/dev/null 2>&1")
     xml = shell("cat /sdcard/ui.xml")
     debut = xml.find("<?xml")
-    if debut < 0:
-        return False
-    for noeud in ET.fromstring(xml[debut:]).iter("node"):
+    return list(ET.fromstring(xml[debut:]).iter("node")) if debut >= 0 else []
+
+
+def toucher(noeud: ET.Element) -> None:
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", noeud.get("bounds", "")))
+    shell(f"input tap {(x1 + x2) // 2} {(y1 + y2) // 2}")
+
+
+def toucher_texte(texte: str) -> bool:
+    """Touche le premier élément affichant exactement ce texte."""
+    for noeud in noeuds_ecran():
         if noeud.get("text") == texte:
-            x1, y1, x2, y2 = map(int, re.findall(r"\d+", noeud.get("bounds", "")))
-            shell(f"input tap {(x1 + x2) // 2} {(y1 + y2) // 2}")
+            toucher(noeud)
             return True
     return False
+
+
+def ligne_du_journal() -> tuple[str, ET.Element] | None:
+    """(domaine, bouton « Autoriser ») de la première ligne du Journal portant un domaine testé."""
+    domaine = None
+    for noeud in noeuds_ecran():
+        texte = noeud.get("text")
+        if texte in BLOQUES:
+            domaine = texte
+        elif texte == "Autoriser":
+            if domaine:
+                return domaine, noeud
+            domaine = None
+    return None
+
+
+def verifier_autoriser() -> None:
+    """« Autoriser » depuis le Journal : le domaine se résout aussitôt, les autres restent bloqués."""
+    ligne = ligne_du_journal()
+    if not check("Journal : ligne d'un domaine bloqué avec « Autoriser »", ligne is not None, ligne[0] if ligne else "aucune"):
+        return
+    domaine, bouton = ligne
+    toucher(bouton)
+    resolu = attendre(lambda: resout(domaine)[0], 12)
+    check(f"« Autoriser » : {domaine} se résout à nouveau, sans redémarrage", bool(resolu))
+    autre = next(d for d in ("scorecardresearch.com", "app-measurement.com") if d != domaine)
+    ok, sortie = resout(autre)
+    check(f"les autres domaines restent bloqués : {autre}", not ok, sortie)
+    capture("02b-journal-apres-autoriser")
 
 
 def interface_tun() -> tuple[str, str] | None:
@@ -131,8 +169,10 @@ def main() -> int:
         if toucher_texte(onglet):
             time.sleep(2)
             capture(nom)
+            if onglet == "Journal":
+                verifier_autoriser()
         else:
-            print(f"   (onglet « {onglet} » introuvable dans l'arbre d'accessibilité)")
+            check(f"onglet « {onglet} » présent", False, "introuvable dans l'arbre d'accessibilité")
     toucher_texte("Accueil")
 
     plantages = shell("logcat -d -b crash")

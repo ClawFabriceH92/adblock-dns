@@ -48,8 +48,8 @@ Classées par rapport utilité / effort. Aucune n'est implémentée.
 3. **Tuile des réglages rapides** et **pause temporaire** (15 min, 1 h) pour dépanner un site sans
    aller dans l'application.
 4. **Tests de l'interface et des ViewModels** (Robolectric, tests Compose) : le module `app` n'a
-   pas encore de tests unitaires ; seuls la compilation, le lint et le test sur émulateur le
-   couvrent.
+   qu'une classe de tests unitaires (fenêtres des statistiques) ; le reste n'est couvert que par
+   la compilation, le lint et le test sur émulateur.
 5. **Interception des DNS codés en dur** (8.8.8.8, 1.1.1.1…) : router ces adresses dans le tunnel
    pour filtrer aussi les applications qui ignorent le DNS du système. Effort réel : il faut
    laisser passer ou refuser proprement le reste de leur trafic (HTTPS vers ces adresses).

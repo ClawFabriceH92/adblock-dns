@@ -64,7 +64,7 @@ Structure :
 | `core/` | Kotlin pur : paquets IPv4/IPv6/UDP/TCP, messages DNS, moteur de filtrage, parseurs de listes, téléchargement conditionnel, résolveurs UDP et DoH | JVM (79 tests) + TUN Linux |
 | `app/` | Android : `VpnService`, Room (journal, règles, listes), DataStore (réglages), WorkManager, Compose Material 3 | CI (compilation, lint) + émulateur |
 | `mockup/` | Maquette cliquable du cadrage | `tools/verifier_maquette.py` (Playwright) |
-| `tools/` | Test TUN Linux, test sur émulateur, mise à jour de la liste embarquée, vérification de la maquette | — |
+| `tools/` | Test TUN Linux, test sur émulateur, contrôle de l'APK, mise à jour de la liste embarquée, vérification de la maquette | — |
 
 ## Développement
 
@@ -75,6 +75,7 @@ Prérequis : JDK 17 ou plus, SDK Android (Android Studio). Versions : `gradle/li
 ./gradlew :core:test -PnetworkTests=true   # + vraies listes publiques et vrais résolveurs DoH
 ./gradlew :app:assembleDebug               # APK de développement
 ./gradlew :app:lintDebug                   # lint Android
+python3 tools/verifier_apk.py app/build/outputs/apk/debug/app-debug.apk   # liste embarquée présente dans l'APK
 
 # Test de bout en bout sur une interface TUN (Linux, root) :
 ./gradlew :core:writeTestClasspath && sudo python3 tools/test_tun_linux.py
