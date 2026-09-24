@@ -52,7 +52,8 @@ object BlocklistCatalog {
         url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro-onlydomains.txt",
         category = ListCategory.ADS_TRACKING,
         enabledByDefault = true,
-        embeddedAsset = "blocklists/hagezi-pro.txt.gz",
+        // Pas de « .gz » : la compilation Android retire cette extension des assets (hérité d'aapt).
+        embeddedAsset = "blocklists/hagezi-pro.txt.gzip",
         license = "GPL-3.0",
         homepage = "https://github.com/hagezi/dns-blocklists",
     )
@@ -143,11 +144,17 @@ class BlocklistRepository(
             for (state in dao.allNow()) {
                 val definition = BlocklistCatalog.byId(state.id) ?: continue
                 if (state.enabled && definition.embeddedAsset != null && !isUsable(state.id)) {
-                    installFromAsset(definition, state)
+                    try {
+                        installFromAsset(definition, state)
+                    } catch (e: IOException) {
+                        Log.e(TAG, "Préparation de la liste embarquée impossible", e)
+                        // Visible dans l'écran Listes ; l'accueil signale l'absence de règles.
+                        dao.upsert(state.copy(lastError = "Liste embarquée illisible : ${describe(e)}"))
+                    }
                 }
             }
         } catch (e: IOException) {
-            Log.e(TAG, "Préparation de la liste embarquée impossible", e)
+            Log.e(TAG, "Préparation des listes impossible", e)
         } finally {
             _installed.value = true
         }
@@ -161,7 +168,7 @@ class BlocklistRepository(
 
     private suspend fun installFromAsset(definition: BlocklistDefinition, state: ListStateEntity) {
         val asset = definition.embeddedAsset ?: return
-        val compiled = context.assets.open(asset).use { raw -> GZIPInputStream(raw).use { BlocklistCompiler.compile(it) } }
+        val compiled = context.assets.open(asset).use { raw -> compileMaybeGzip(raw) }
         fileMutex.withLock { writeCompiled(definition.id, compiled.domains) }
         dao.upsert(
             state.copy(

@@ -42,6 +42,9 @@ jobs:
       - name: Compilation Android et tests unitaires de l'application
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest
 
+      - name: Liste embarquée présente et lisible dans l'APK
+        run: python3 tools/verifier_apk.py app/build/outputs/apk/debug/app-debug.apk
+
       - name: Lint Android
         run: ./gradlew :app:lintDebug
 

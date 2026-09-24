@@ -76,6 +76,13 @@ fun HomeScreen(
         }
         if (!state.engine.ready) {
             NoticeCard("Préparation", "Chargement de la liste embarquée…", colors.ads)
+        } else if (state.engine.listEntries + state.engine.blockRules == 0) {
+            NoticeCard(
+                title = "Aucune règle de blocage",
+                text = "Aucune liste n'est chargée : rien n'est bloqué. Ouvrez l'onglet Listes pour activer " +
+                    "ou mettre à jour une liste.",
+                color = colors.warn,
+            )
         }
 
         SectionCard {
