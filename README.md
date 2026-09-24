@@ -91,6 +91,15 @@ Base de données : le schéma Room est versionné dans `app/schemas/`. Après to
 d'une table, augmenter la version de `AppDatabase`, versionner le nouveau schéma produit par la
 compilation et écrire la migration ; la CI échoue si le schéma du dépôt n'est plus à jour.
 
+## APK de développement
+
+Après chaque construction réussie d'une branche (tests et test sur émulateur), la CI publie l'APK
+en pré-release « Version de développement », téléchargeable sans compte GitHub ; chaque
+publication remplace la précédente :
+[AdBlockDns-developpement.apk](https://github.com/ClawFabriceH92/adblock-dns/releases/download/developpement/AdBlockDns-developpement.apk)
+([page de la pré-release](https://github.com/ClawFabriceH92/adblock-dns/releases/tag/developpement)).
+Les artefacts `apk-debug` de la CI, eux, ne se téléchargent qu'avec un compte GitHub connecté.
+
 ## Release signée
 
 Un tag `vX.Y.Z` déclenche la CI : APK release signé, vérifié par `apksigner`, publié en release

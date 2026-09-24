@@ -6,7 +6,8 @@
 ## 1. À vérifier sur le téléphone (priorité absolue)
 
 Rien de ce qui suit n'a pu être vérifié sans l'appareil réel. APK de développement :
-artefact `apk-debug` de la dernière exécution de la CI (onglet Actions du dépôt).
+[AdBlockDns-developpement.apk](https://github.com/ClawFabriceH92/adblock-dns/releases/download/developpement/AdBlockDns-developpement.apk)
+(pré-release publiée par la CI, voir README).
 
 | # | Vérification | Comment | Attendu |
 |---|---|---|---|

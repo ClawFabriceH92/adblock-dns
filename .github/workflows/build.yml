@@ -111,6 +111,46 @@ jobs:
           path: build/captures-emulateur/
           if-no-files-found: ignore
 
+  apk-developpement:
+    name: Publication de l'APK de développement
+    # Les artefacts de la CI ne se téléchargent qu'avec un compte GitHub connecté : l'APK
+    # vérifié (tests et émulateur) est aussi publié en pré-release « developpement », lien direct.
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    needs: [build, emulateur]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: apk-debug
+          path: apk
+
+      - name: Pré-release « developpement » (remplace la précédente)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          NOM="AdBlockDns-developpement.apk"
+          cp apk/app-debug.apk "$NOM"
+          sha256sum "$NOM" > "$NOM.sha256"
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          CERT=$("$APKSIGNER" verify --print-certs "$NOM" 2>/dev/null | sed -n 's/.*SHA-256 digest: //p' | head -1)
+          cat > notes.md <<EOF
+          Dernière version de développement, publiée automatiquement après réussite des tests et du test sur émulateur.
+
+          - Construite depuis \`${GITHUB_REF_NAME}\` (commit ${GITHUB_SHA::7}) le $(date -u '+%d/%m/%Y à %H:%M') UTC.
+          - APK de débogage : identifiant \`io.github.clawfabriceh92.adblockdns.debug\`, signé avec la clé de débogage de la CI (empreinte SHA-256 du certificat : ${CERT:-non déterminée}).
+          - Si l'installation par-dessus une version précédente échoue (« Application non installée »), désinstaller d'abord cette dernière.
+
+          Installation : télécharger \`${NOM}\`, l'ouvrir, autoriser l'installation depuis le navigateur, puis lancer « Bloqueur DNS ».
+          EOF
+          gh release delete developpement --cleanup-tag --yes || true
+          gh api -X DELETE "repos/$GH_REPO/git/refs/tags/developpement" 2>/dev/null || true
+          gh release create developpement "$NOM" "$NOM.sha256" --prerelease --target "$GITHUB_SHA" \
+            --title "Version de développement" --notes-file notes.md
+
   release:
     name: Release signée
     if: startsWith(github.ref, 'refs/tags/v')
