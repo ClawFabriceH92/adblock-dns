@@ -8,6 +8,9 @@ service tiers.
 
 ## Décisions de cadrage (validées le 24/09/2026)
 
+> Les écarts entre ce cadrage et l'implémentation v1.0 sont listés, avec leur raison, dans la
+> section « Implémentation v1.0 » plus bas.
+
 | # | Question | Décision | Conséquence technique |
 |---|---|---|---|
 | 1 | Mécanisme de blocage | **VPN local (`VpnService`)** + listes locales, sans root | permission `BIND_VPN_SERVICE`, service au premier plan, écran d'autorisation VPN Android, démarrage au boot, applications exclues |
@@ -91,6 +94,31 @@ Points d'implémentation à ne pas rater :
 | DNS privé système (DoT/DoH) | non | filtrage décidé par un tiers, aucune statistique locale |
 | `/etc/hosts` | non | nécessite un appareil rooté |
 
+## Implémentation v1.0 : écarts et précisions (24/09/2026)
+
+Ce qui diffère du cadrage, et pourquoi :
+
+| Sujet | Cadrage | Implémentation | Raison |
+|---|---|---|---|
+| Format de la liste | fichier hosts | format « Wildcard Domains » de hagezi (`wildcard/pro-onlydomains.txt`) | le format hosts est désormais « legacy » chez hagezi (README du dépôt) ; le format domaines correspond exactement à la correspondance par suffixe du moteur |
+| Taille de la liste | « 1 415 322 règles » (maquette) | 225 658 domaines (hagezi Pro au 23/09/2026) | chiffre de la maquette fictif ; la maquette a été corrigée |
+| Structure du moteur | `HashSet` + tableau de suffixes | empreintes 64 bits triées, recherche par dichotomie | ~8 octets par domaine au lieu de ~100 ; 2,2 millions de domaines (hagezi TIF) tiennent dans un tas de 64 Mo (mesuré sur JVM) |
+| Catégories | pubs / traqueurs / malwares | « publicité et traçage » / « malveillants » / « liste perso » / « règles manuelles » | les listes hagezi Multi ne distinguent pas publicité et traçage domaine par domaine ; la catégorie est celle de la liste qui bloque |
+| Liste malveillants | active dans la maquette | hagezi TIF (medium) proposée, désactivée par défaut | ~931 000 domaines et 16 Mo à télécharger : à activer sciemment |
+| Notification permanente | interrupteur | lien vers les réglages de la notification | Android exige une notification pour un service au premier plan ; on peut seulement la réduire ou la masquer |
+| DNS amont « système » | serveurs du réseau | résolveur d'Android (`DnsResolver.rawQuery`), repli UDP direct | respecte le DNS privé (DoT) du système ; la doc de `LinkProperties` interdit le DNS en clair quand il est actif |
+| DoH | Cloudflare, Quad9 | OkHttp (HTTP/2) | Quad9 a retiré le HTTP/1.1 de son DoH le 15/12/2025 |
+| Version minimale | non fixée | Android 10 (API 29) | attribution des requêtes aux applications (`getConnectionOwnerUid`), `DnsResolver`, `setMetered` |
+| Mise à jour automatique | « à la demande » | à la demande + hebdomadaire en Wi-Fi, **activée par défaut** (décision du 24/09/2026), désactivable dans les Réglages | les listes hagezi annoncent « Expires: 8 hours » : un instantané embarqué vieillit vite |
+| Journal | journal détaillé | requêtes bloquées uniquement, conservées 30 jours | couvre les statistiques les plus longues (30 j) sans croissance illimitée |
+
+Ajouts non prévus au cadrage : anti-camouflage CNAME (désactivable), domaine canari Firefox,
+refus immédiat du DNS sur TCP/DoT (RST), choix automatique d'une plage d'adresses libre pour le
+tunnel, relance après mise à jour de l'application, compatibilité VPN permanent d'Android,
+raccourci « Activer la protection », « Annuler » après « Autoriser » ; le 25/09/2026, onglet
+« Autorisées » du Journal (domaines résolus récemment, en mémoire, bouton « Bloquer ») et liste
+hagezi Multi PRO++ en option.
+
 ## Définition du « fini » pour la v1.0
 
 - L'APK s'installe, la protection s'active en un tap, la liste embarquée bloque
@@ -100,3 +128,9 @@ Points d'implémentation à ne pas rater :
 - Démarrage au boot et applications exclues fonctionnent.
 - Aucune fuite : l'app n'envoie rien sur le réseau en dehors du téléchargement des listes.
 - APK signé publié en release GitHub, nom de fichier versionné, icône dédiée.
+
+État au 24/09/2026 : la chaîne de release est prête (il manque les secrets de signature, voir
+README) ; le blocage réel est vérifié sur interface TUN Linux et sur émulateur Android en CI,
+ainsi que « Autoriser » sans redémarrage (émulateur) ; les points « téléphone réel » (boot,
+applications exclues, attribution, autonomie) restent à vérifier avec la liste de contrôle de
+`docs/AMELIORATIONS.md`.

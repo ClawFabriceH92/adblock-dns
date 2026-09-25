@@ -159,7 +159,7 @@
     <div class="side">
       <div class="note">
         <b>Ce que montre la maquette</b>
-        <span id="side-state">Protection active · liste hagezi Pro · 1 415 322 règles</span>
+        <span id="side-state">Protection active · liste hagezi Pro · 225 658 règles</span>
       </div>
       <h3>Parcours simulé</h3>
       <div class="side list">
@@ -223,16 +223,18 @@ const LIBELLE = { pub:'pub', traqueur:'traqueur', malware:'malveillant' };
 
 const S = {
   ecran:'accueil', protege:true, boot:true, notif:true, dns:'systeme',
-  regles:1415322, majLe:'18/09/2026', majEnCours:false,
+  regles:225658, majLe:'23/09/2026', majEnCours:false,
   bloquees:1247, whitelist:['impots.gouv.fr','banque-populaire.fr'],
   exclues:['Crédit Agricole','Netflix'],
-  journal:[], heures:Array.from({length:24},(_,h)=>Math.round(18+52*Math.sin((h-7)/24*Math.PI)+ (h>7&&h<22?24:0) *Math.random())),
+  journal:[], seq:0, heures:Array.from({length:24},(_,h)=>Math.round(18+52*Math.sin((h-7)/24*Math.PI)+ (h>7&&h<22?24:0) *Math.random())),
 };
 
 /* ------------------------------------------------------------------ utilitaires */
 const $ = s => document.querySelector(s);
 const hhmm = d => d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 const nf = n => n.toLocaleString('fr-FR');
+/* Échappe le texte inséré via innerHTML (la recherche est une saisie libre). */
+const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const appDe = id => APPS.find(a => a.id === id);
 
 function seedJournal(n = 34) {
@@ -299,7 +301,7 @@ function ecranAccueil() {
   </div>
 
   <div class="grid2">
-    <div class="kpi"><div class="v">${nf(9 + (S.protege?3:0))}</div><div class="l">applications protégées</div></div>
+    <div class="kpi"><div class="v">${nf(new Set(S.journal.map(e => e.app)).size)}</div><div class="l">applications concernées aujourd'hui</div></div>
     <div class="kpi"><div class="v">${nf(S.regles)}</div><div class="l">règles chargées</div></div>
   </div>
 
@@ -327,34 +329,44 @@ function ecranAccueil() {
 }
 
 /* ------------------------------------------------------------------ écran Journal */
-function ecranJournal() {
+function lignesJournal() {
   const q = (S.recherche||'').toLowerCase();
   const f = S.filtreApp || '';
   const rows = S.journal.filter(e => (!q || e.dom.includes(q)) && (!f || e.app === f)).slice(0, 40);
+  return rows.length ? rows.map(e=>{
+      const a = appDe(e.app);
+      return `<div class="item">
+        <div class="app-dot" style="background:${a.c}">${esc(a.nom[0])}</div>
+        <div class="grow">
+          <div class="dom">${esc(e.dom)}</div>
+          <div class="meta">${hhmm(e.t)} · ${esc(a.nom)} · <span class="tag ${e.cat==='pub'?'pub':e.cat==='traqueur'?'trak':'mal'}">${LIBELLE[e.cat]}</span></div>
+        </div>
+        <button class="mini" data-allow="${esc(e.id)}" title="Ajouter à la liste blanche">Autoriser</button>
+      </div>`;}).join('')
+    : `<div class="muted" style="padding:18px 0;text-align:center">Aucune requête bloquée avec ce filtre.</div>`;
+}
+function pastillesBlanches() {
+  return S.whitelist.map(d=>`<span class="pill" data-unallow="${esc(d)}" title="Retirer de la liste blanche">${esc(d)} ✕</span>`).join('') || 'vide';
+}
+function ecranJournal() {
+  const f = S.filtreApp || '';
   return `
   <h2 class="t">Journal des blocages</h2>
   <div class="card" style="padding:12px">
-    <input type="search" id="rech" placeholder="Rechercher un domaine…" value="${S.recherche||''}">
+    <input type="search" id="rech" placeholder="Rechercher un domaine…" value="${esc(S.recherche||'')}">
     <div style="height:9px"></div>
     <select id="filtre">
       <option value="">Toutes les applications</option>
-      ${APPS.map(a=>`<option value="${a.id}" ${f===a.id?'selected':''}>${a.nom}</option>`).join('')}
+      ${APPS.map(a=>`<option value="${a.id}" ${f===a.id?'selected':''}>${esc(a.nom)}</option>`).join('')}
     </select>
   </div>
-  <div class="card" style="padding:6px 14px" id="liste-journal">
-    ${rows.length ? rows.map(e=>{
-      const a = appDe(e.app);
-      return `<div class="item">
-        <div class="app-dot" style="background:${a.c}">${a.nom[0]}</div>
-        <div class="grow">
-          <div class="dom">${e.dom}</div>
-          <div class="meta">${hhmm(e.t)} · ${a.nom} · <span class="tag ${e.cat==='pub'?'pub':e.cat==='traqueur'?'trak':'mal'}">${LIBELLE[e.cat]}</span></div>
-        </div>
-        <button class="mini" data-allow="${e.id}" title="Ajouter à la liste blanche">Autoriser</button>
-      </div>`;}).join('')
-    : `<div class="muted" style="padding:18px 0;text-align:center">Aucune requête bloquée avec ce filtre.</div>`}
-  </div>
-  <div class="muted">Liste blanche : ${S.whitelist.map(d=>`<span class="pill">${d}</span>`).join('') || 'vide'}</div>`;
+  <div class="card" style="padding:6px 14px" id="liste-journal">${lignesJournal()}</div>
+  <div class="muted" id="blanche-journal">Liste blanche : ${pastillesBlanches()}</div>`;
+}
+/* Mise à jour partielle : la saisie en cours et le menu déroulant restent intacts. */
+function majJournal() {
+  const l = $('#liste-journal'); if (l) l.innerHTML = lignesJournal();
+  const b = $('#blanche-journal'); if (b) b.innerHTML = `Liste blanche : ${pastillesBlanches()}`;
 }
 
 /* ------------------------------------------------------------------ écran Stats */
@@ -434,14 +446,14 @@ function ecranListes() {
     <div class="bar"><i id="prog" style="width:${S.majEnCours?52:100}%;background:${S.majEnCours?'var(--warn)':'var(--ok)'}"></i></div>
     <div style="height:11px"></div>
     <button class="btn ${S.majEnCours?'off':''}" id="maj">${S.majEnCours?'Mise à jour en cours…':'Mettre à jour les listes'}</button>
-    <div class="muted" style="margin-top:8px">Source : raw.githubusercontent.com/hagezi/pro · téléchargement du fichier hosts</div>
+    <div class="muted" style="margin-top:8px">Source : raw.githubusercontent.com/hagezi/dns-blocklists · wildcard/pro-onlydomains.txt</div>
   </div>
   <div class="card">
     <div class="row"><div class="grow"><div class="dom">StevenBlack (unifiée)</div>
-      <div class="meta">Liste complémentaire · 210 431 règles</div></div>
+      <div class="meta">Liste complémentaire · 76 510 règles</div></div>
       <div class="switch" data-list="steven"></div></div>
-    <div class="row" style="margin-top:10px"><div class="grow"><div class="dom">hagezi Threat Intelligence</div>
-      <div class="meta">Domaines malveillants uniquement · 640 118 règles</div></div>
+    <div class="row" style="margin-top:10px"><div class="grow"><div class="dom">hagezi Threat Intelligence (medium)</div>
+      <div class="meta">Domaines malveillants uniquement · 931 277 règles</div></div>
       <div class="switch on" data-list="tds"></div></div>
     <div class="row" style="margin-top:10px"><div class="grow"><div class="dom">Ma liste personnelle</div>
       <div class="meta">Importée depuis un fichier local · 42 règles</div></div>
@@ -450,7 +462,7 @@ function ecranListes() {
   <div class="card">
     <div class="dom">Liste blanche · ${S.whitelist.length} domaine(s)</div>
     <div class="muted" style="margin-top:6px">Priorité absolue sur toutes les listes</div>
-    <div style="margin-top:8px">${S.whitelist.map(d=>`<span class="pill">${d} ✕</span>`).join('') || '<span class="muted">vide</span>'}</div>
+    <div style="margin-top:8px">${S.whitelist.length ? pastillesBlanches() : '<span class="muted">vide</span>'}</div>
   </div>
   <div class="card">
     <div class="dom">Liste noire manuelle · 3 domaines</div>
@@ -514,7 +526,7 @@ function render() {
 
 /* ------------------------------------------------------------------ interactions */
 document.addEventListener('click', ev => {
-  const t = ev.target.closest('[data-nav],[data-go],[data-allow],[data-sw],[data-jours],[data-dns],[data-list],[data-purge],[data-exclure],[data-import],#maj,#toggle');
+  const t = ev.target.closest('[data-nav],[data-go],[data-allow],[data-unallow],[data-sw],[data-jours],[data-dns],[data-list],[data-purge],[data-exclure],[data-import],#maj,#toggle');
   if (!t) return;
   const nav = t.getAttribute('data-nav'), go = t.getAttribute('data-go');
   if (nav) { S.ecran = nav; render(); return; }
@@ -539,13 +551,21 @@ document.addEventListener('click', ev => {
   if (j) { S.jours = parseInt(j,10); render(); return; }
   const dns = t.getAttribute('data-dns');
   if (dns) { S.dns = dns; render(); toast('Résolveur amont modifié'); return; }
+  const un = t.getAttribute('data-unallow');
+  if (un) {
+    S.whitelist = S.whitelist.filter(d => d !== un);
+    if (S.ecran === 'journal') majJournal(); else render();
+    toast(`${un} retiré de la liste blanche`);
+    return;
+  }
   const al = t.getAttribute('data-allow');
   if (al) {
     const e = S.journal.find(x => x.id === al);
     if (e) {
-      S.whitelist.push(e.dom); S.journal = S.journal.filter(x => x.id !== al);
+      if (!S.whitelist.includes(e.dom)) S.whitelist.push(e.dom);
+      S.journal = S.journal.filter(x => x.id !== al);
       if (S.bloquees > 0) S.bloquees--;
-      render(); toast(`${e.dom} autorisé · ajouté à la liste blanche`);
+      majJournal(); toast(`${e.dom} autorisé · ajouté à la liste blanche`);
     }
     return;
   }
@@ -556,19 +576,19 @@ document.addEventListener('click', ev => {
   if (t.id === 'maj') {
     S.majEnCours = true; render();
     setTimeout(() => {
-      S.majEnCours = false; S.regles = 1421887;
+      S.majEnCours = false; S.regles = 225912;
       S.majLe = new Date().toLocaleDateString('fr-FR');
-      render(); toast('Listes à jour · 1 421 887 règles');
+      render(); toast(`Listes à jour · ${nf(S.regles)} règles`);
     }, 2600);
     return;
   }
 });
 
 document.addEventListener('input', ev => {
-  if (ev.target.id === 'rech') { S.recherche = ev.target.value; render(); $('#rech').focus(); }
+  if (ev.target.id === 'rech') { S.recherche = ev.target.value; majJournal(); }
 });
 document.addEventListener('change', ev => {
-  if (ev.target.id === 'filtre') { S.filtreApp = ev.target.value; render(); }
+  if (ev.target.id === 'filtre') { S.filtreApp = ev.target.value; majJournal(); }
 });
 
 $('#theme').addEventListener('click', () => {
@@ -595,9 +615,10 @@ let flux = setInterval(() => {
   if (!S.protege) return;
   const d = DOMAINES[Math.floor(Math.random()*DOMAINES.length)];
   const app = APPS[Math.floor(Math.random()*APPS.length)];
-  S.journal.unshift({ t:new Date(), dom:d[0], cat:d[1], app:app.id, id:'f'+Math.random() });
+  S.journal.unshift({ t:new Date(), dom:d[0], cat:d[1], app:app.id, id:'f'+(++S.seq) });
   S.bloquees++;
-  if (S.ecran === 'journal' || S.ecran === 'accueil') render();
+  if (S.ecran === 'journal') majJournal();
+  else if (S.ecran === 'accueil') { const c = $('#cpt'); if (c) c.textContent = nf(S.bloquees); }
 }, 3200);
 </script>
 </body>
