@@ -134,15 +134,21 @@ def verifier_bloquer() -> None:
         toucher(champ)
         shell("input text wikipedia")
         time.sleep(2)
-    ligne = ligne_avec_bouton(["wikipedia.org"], "Bloquer")
-    if not check("Autorisées : wikipedia.org listé avec « Bloquer »", ligne is not None):
-        return
-    capture("02c-autorisees")
-    toucher(ligne[1])
-    # La règle sur wikipedia.org couvre ses sous-domaines ; fr.wikipedia.org n'a jamais été
-    # résolu, il n'est donc pas dans le cache DNS d'Android.
-    bloque = attendre(lambda: not resout("fr.wikipedia.org")[0], 12)
-    check("« Bloquer » : fr.wikipedia.org ne se résout plus (règle ajoutée sur wikipedia.org)", bool(bloque))
+    try:
+        ligne = ligne_avec_bouton(["wikipedia.org"], "Bloquer")
+        if not check("Autorisées : wikipedia.org listé avec « Bloquer »", ligne is not None):
+            return
+        capture("02c-autorisees")
+        toucher(ligne[1])
+        # La règle sur wikipedia.org couvre ses sous-domaines ; fr.wikipedia.org n'a jamais été
+        # résolu, il n'est donc pas dans le cache DNS d'Android.
+        bloque = attendre(lambda: not resout("fr.wikipedia.org")[0], 12)
+        check("« Bloquer » : fr.wikipedia.org ne se résout plus (règle ajoutée sur wikipedia.org)", bool(bloque))
+    finally:
+        # « Retour » ferme le clavier ouvert par la recherche, qui faussait les captures des
+        # onglets suivants ; sans clavier, il ramène à l'accueil, sans effet sur la suite.
+        shell("input keyevent 4")
+        time.sleep(1)
 
 
 def interface_tun() -> tuple[str, str] | None:

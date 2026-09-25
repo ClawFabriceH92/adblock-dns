@@ -63,7 +63,7 @@ Structure :
 
 | Module | Contenu | Testé où |
 |---|---|---|
-| `core/` | Kotlin pur : paquets IPv4/IPv6/UDP/TCP, messages DNS, moteur de filtrage, parseurs de listes, téléchargement conditionnel, résolveurs UDP et DoH | JVM (79 tests) + TUN Linux |
+| `core/` | Kotlin pur : paquets IPv4/IPv6/UDP/TCP, messages DNS, moteur de filtrage, parseurs de listes, téléchargement conditionnel, résolveurs UDP et DoH | JVM (80 tests) + TUN Linux |
 | `app/` | Android : `VpnService`, Room (journal, règles, listes), DataStore (réglages), WorkManager, Compose Material 3 | CI (compilation, lint) + émulateur |
 | `mockup/` | Maquette cliquable du cadrage | `tools/verifier_maquette.py` (Playwright) |
 | `tools/` | Test TUN Linux, test sur émulateur, contrôle de l'APK, mise à jour de la liste embarquée, vérification de la maquette | — |
@@ -131,13 +131,13 @@ En local, un fichier `keystore.properties` (non versionné) avec `storeFile`, `s
 
 | Vérification | Résultat | Où |
 |---|---|---|
-| Tests unitaires du moteur | 79 tests, 0 échec | local et CI |
-| Tests unitaires de l'application (fenêtres des statistiques 24 h / 7 j / 30 j) | 4 tests, 0 échec | CI |
+| Tests unitaires du moteur | 80 tests, 0 échec | local et CI |
+| Tests unitaires de l'application (fenêtres des statistiques, domaines récents) | 7 tests, 0 échec | CI (et local pour les domaines récents) |
 | Vraies listes : hagezi Pro, TIF medium, StevenBlack | nombre de domaines compilés = nombre annoncé dans l'en-tête ; mise à jour conditionnelle (HTTP 304) confirmée | local et CI |
 | Moteur branché sur une vraie interface TUN, client DNS indépendant (dnspython) | 15/15 contrôles, IPv4 et IPv6, sommes de contrôle acceptées par le noyau, latence ~0,3 ms | CI (13/13 en local, sans IPv6) |
 | Compilation Android, lint | réussis | CI |
 | Liste embarquée présente et lisible dans l'APK (`tools/verifier_apk.py`) | 225 658 domaines | CI |
-| Émulateur Android 14 (API 34), VPN réel : tunnel monté, 4 domaines de la liste bloqués, domaines ordinaires résolus, blocages journalisés, « Autoriser » effectif sans redémarrage (les autres domaines restent bloqués), aucun plantage | 13/13 contrôles (24/09/2026) | CI |
+| Émulateur Android 14 (API 34), VPN réel : tunnel monté, 4 domaines de la liste bloqués, domaines ordinaires résolus, blocages journalisés, « Autoriser » effectif sans redémarrage (les autres domaines restent bloqués), onglet « Autorisées » et « Bloquer » effectif aussitôt (sous-domaine compris), aucun plantage | 16/16 contrôles (25/09/2026) | CI |
 | Maquette | 24/24 contrôles | local |
 | **Téléphone réel** (boot, applications exclues, attribution par application, autonomie) | **non vérifié** | — |
 
