@@ -15,6 +15,7 @@ import io.github.clawfabriceh92.adblockdns.data.BlocklistCatalog
 import io.github.clawfabriceh92.adblockdns.data.BlocklistDefinition
 import io.github.clawfabriceh92.adblockdns.data.EngineStatus
 import io.github.clawfabriceh92.adblockdns.data.JournalRepository
+import io.github.clawfabriceh92.adblockdns.data.RecentDomain
 import io.github.clawfabriceh92.adblockdns.data.Settings
 import io.github.clawfabriceh92.adblockdns.data.UpdateOutcome
 import io.github.clawfabriceh92.adblockdns.data.UpstreamChoice
@@ -45,6 +46,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,6 +119,25 @@ class JournalViewModel(private val container: AppContainer) : ViewModel() {
 
     val apps: StateFlow<List<AppRef>> = container.journal.apps().stateIn(this, emptyList())
 
+    /** Domaines autorisés récemment (en mémoire), relus au plus une fois par seconde. */
+    private val recentAll: Flow<List<RecentDomain>> = container.recentQueries.version
+        .sample(1_000)
+        .onStart { emit(-1L) }
+        .map { container.recentQueries.snapshot() }
+
+    val recent: StateFlow<List<RecentDomain>> = combine(recentAll, search.debounce(250), app) { list, q, a ->
+        val text = q.trim()
+        list.filter { (text.isEmpty() || it.domain.contains(text, ignoreCase = true)) && (a == null || it.appPackage == a) }
+    }.stateIn(this, emptyList())
+
+    val recentApps: StateFlow<List<AppRef>> = recentAll
+        .map { list ->
+            list.mapNotNull { r -> r.appPackage?.let { AppRef(it, r.appLabel) } }
+                .distinctBy { it.appPackage }
+                .sortedBy { it.appLabel.lowercase() }
+        }
+        .stateIn(this, emptyList())
+
     val whitelist: StateFlow<List<String>> = container.rules.all
         .map { rules -> rules.filter { it.type == RuleEntity.ALLOW }.map { it.pattern } }
         .stateIn(this, emptyList())
@@ -140,6 +162,18 @@ class JournalViewModel(private val container: AppContainer) : ViewModel() {
             result.pattern?.let { container.rules.remove(it, RuleEntity.ALLOW) }
             container.journal.restore(result.removed)
         }
+    }
+
+    /** Ajoute le domaine à la liste noire (effet immédiat) et le retire des domaines récents. */
+    suspend fun block(domain: String): String? {
+        val pattern = container.rules.block(domain)
+        container.recentQueries.remove(domain)
+        return pattern
+    }
+
+    fun undoBlock(pattern: String?) {
+        if (pattern == null) return
+        viewModelScope.launch { container.rules.remove(pattern, RuleEntity.BLOCK) }
     }
 }
 

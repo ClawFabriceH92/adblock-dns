@@ -47,7 +47,11 @@ class DnsPacketProcessor(
          */
         fun onBlocked(query: BlockedQuery, packet: UdpPacket)
 
-        fun onForwarded(domain: String?) {}
+        /**
+         * Appelé pour chaque requête transmise au résolveur amont, avant l'envoi de la réponse
+         * (la socket de l'application existe encore). Les messages sans question n'y passent pas.
+         */
+        fun onForwarded(question: DnsQuestion, packet: UdpPacket) {}
 
         fun onUpstreamFailure(domain: String?, error: IOException) {}
     }
@@ -98,7 +102,7 @@ class DnsPacketProcessor(
                 return block(packet, query, question, blocked)
             }
         }
-        listener.onForwarded(question?.name)
+        if (question != null) listener.onForwarded(question, packet)
         val payload = when {
             response.size <= IpPackets.MAX_UDP_PAYLOAD -> response
             question != null -> DnsMessages.truncatedResponse(query, question)

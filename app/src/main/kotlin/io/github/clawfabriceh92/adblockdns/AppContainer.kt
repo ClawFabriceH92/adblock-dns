@@ -8,6 +8,7 @@ import io.github.clawfabriceh92.adblockdns.core.lists.ListDownloader
 import io.github.clawfabriceh92.adblockdns.data.BlocklistRepository
 import io.github.clawfabriceh92.adblockdns.data.FilterEngineHolder
 import io.github.clawfabriceh92.adblockdns.data.JournalRepository
+import io.github.clawfabriceh92.adblockdns.data.RecentQueries
 import io.github.clawfabriceh92.adblockdns.data.RulesRepository
 import io.github.clawfabriceh92.adblockdns.data.SettingsRepository
 import io.github.clawfabriceh92.adblockdns.data.db.AppDatabase
@@ -47,6 +48,9 @@ class AppContainer(private val application: Application) {
     val rules: RulesRepository by lazy { RulesRepository(database.ruleDao()) }
 
     val journal: JournalRepository by lazy { JournalRepository(database.blockedEventDao(), applicationScope) }
+
+    /** Derniers domaines autorisés (mémoire seulement), pour bloquer une publicité qui passe. */
+    val recentQueries = RecentQueries()
 
     val blocklists: BlocklistRepository by lazy {
         BlocklistRepository(

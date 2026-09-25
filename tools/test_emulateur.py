@@ -9,7 +9,9 @@ depuis le téléphone que :
 - des domaines ordinaires se résolvent toujours ;
 - le service a bien journalisé les blocages (trace des builds de débogage) ;
 - « Autoriser » dans le Journal rétablit la résolution du domaine sans redémarrage, les autres
-  domaines restant bloqués.
+  domaines restant bloqués ;
+- l'onglet « Autorisées » liste un domaine résolu, et « Bloquer » le bloque aussitôt, sous-domaines
+  compris.
 Des captures de chaque écran sont enregistrées dans build/captures-emulateur/.
 
 Prérequis : un émulateur démarré et `adb` dans le PATH.
@@ -88,18 +90,23 @@ def toucher_texte(texte: str) -> bool:
     return False
 
 
-def ligne_du_journal() -> tuple[str, ET.Element] | None:
-    """(domaine, bouton « Autoriser ») de la première ligne du Journal portant un domaine testé."""
+def ligne_avec_bouton(domaines: list[str], bouton: str) -> tuple[str, ET.Element] | None:
+    """(domaine, bouton) de la première ligne affichée portant l'un de ces domaines et ce bouton."""
     domaine = None
     for noeud in noeuds_ecran():
         texte = noeud.get("text")
-        if texte in BLOQUES:
+        if texte in domaines:
             domaine = texte
-        elif texte == "Autoriser":
+        elif texte == bouton:
             if domaine:
                 return domaine, noeud
             domaine = None
     return None
+
+
+def ligne_du_journal() -> tuple[str, ET.Element] | None:
+    """(domaine, bouton « Autoriser ») de la première ligne du Journal portant un domaine testé."""
+    return ligne_avec_bouton(BLOQUES, "Autoriser")
 
 
 def verifier_autoriser() -> None:
@@ -115,6 +122,27 @@ def verifier_autoriser() -> None:
     ok, sortie = resout(autre)
     check(f"les autres domaines restent bloqués : {autre}", not ok, sortie)
     capture("02b-journal-apres-autoriser")
+
+
+def verifier_bloquer() -> None:
+    """Onglet « Autorisées » : un domaine résolu y figure, « Bloquer » le bloque aussitôt."""
+    if not check("Journal : onglet « Autorisées »", toucher_texte("Autorisées")):
+        return
+    time.sleep(2)  # liste relue au plus une fois par seconde
+    champ = next((n for n in noeuds_ecran() if n.get("class") == "android.widget.EditText"), None)
+    if champ is not None:
+        toucher(champ)
+        shell("input text wikipedia")
+        time.sleep(2)
+    ligne = ligne_avec_bouton(["wikipedia.org"], "Bloquer")
+    if not check("Autorisées : wikipedia.org listé avec « Bloquer »", ligne is not None):
+        return
+    capture("02c-autorisees")
+    toucher(ligne[1])
+    # La règle sur wikipedia.org couvre ses sous-domaines ; fr.wikipedia.org n'a jamais été
+    # résolu, il n'est donc pas dans le cache DNS d'Android.
+    bloque = attendre(lambda: not resout("fr.wikipedia.org")[0], 12)
+    check("« Bloquer » : fr.wikipedia.org ne se résout plus (règle ajoutée sur wikipedia.org)", bool(bloque))
 
 
 def interface_tun() -> tuple[str, str] | None:
@@ -171,6 +199,7 @@ def main() -> int:
             capture(nom)
             if onglet == "Journal":
                 verifier_autoriser()
+                verifier_bloquer()
         else:
             check(f"onglet « {onglet} » présent", False, "introuvable dans l'arbre d'accessibilité")
     toucher_texte("Accueil")

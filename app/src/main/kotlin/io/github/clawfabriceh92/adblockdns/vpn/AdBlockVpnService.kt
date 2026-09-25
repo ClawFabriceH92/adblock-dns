@@ -17,6 +17,7 @@ import io.github.clawfabriceh92.adblockdns.AppContainer
 import io.github.clawfabriceh92.adblockdns.BuildConfig
 import io.github.clawfabriceh92.adblockdns.R
 import io.github.clawfabriceh92.adblockdns.appContainer
+import io.github.clawfabriceh92.adblockdns.core.dns.DnsQuestion
 import io.github.clawfabriceh92.adblockdns.core.engine.BlockedQuery
 import io.github.clawfabriceh92.adblockdns.core.engine.DnsPacketProcessor
 import io.github.clawfabriceh92.adblockdns.core.filter.BlockSource
@@ -275,6 +276,11 @@ class AdBlockVpnService : VpnService() {
             )
         }
 
+        override fun onForwarded(question: DnsQuestion, packet: UdpPacket) {
+            val app = container.appResolver.forUid(ownerUid(packet))
+            container.recentQueries.record(question.name, app.packageName, app.label, System.currentTimeMillis())
+        }
+
         override fun onUpstreamFailure(domain: String?, error: IOException) {
             if (BuildConfig.DEBUG) Log.d(TAG, "Échec de résolution amont : ${error.message}")
         }
@@ -341,6 +347,7 @@ class AdBlockVpnService : VpnService() {
 
     override fun onDestroy() {
         teardown()
+        container.recentQueries.clear()
         if (systemResolverCreated) systemResolver.close()
         val status = container.protectionStatus.value
         if (status is ProtectionStatus.Running || status is ProtectionStatus.Starting) {

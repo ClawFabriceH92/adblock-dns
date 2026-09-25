@@ -48,8 +48,9 @@ Rien de ce qui suit n'a pu être vérifié sans l'appareil réel. APK de dévelo
 
 ## 4. Propositions d'amélioration
 
-Classées par rapport utilité / effort. Aucune n'est implémentée. (La mise à jour automatique
-hebdomadaire, première proposition de cette liste, est activée par défaut depuis le 24/09/2026.)
+Classées par rapport utilité / effort. Aucune n'est implémentée. (Déjà faits : mise à jour
+automatique hebdomadaire activée par défaut le 24/09/2026 ; le 25/09/2026, onglet « Autorisées »
+du Journal avec « Bloquer », et liste hagezi Multi PRO++ en option.)
 
 1. **Liste optionnelle « DoH/VPN/TOR/Proxy Bypass » de hagezi** (16 471 entrées selon son README) :
    elle bloque les serveurs DNS chiffrés publics, ce qui oblige les applications qui en utilisent

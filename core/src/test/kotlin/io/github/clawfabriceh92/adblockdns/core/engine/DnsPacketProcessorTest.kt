@@ -2,6 +2,7 @@ package io.github.clawfabriceh92.adblockdns.core.engine
 
 import io.github.clawfabriceh92.adblockdns.core.TestDns
 import io.github.clawfabriceh92.adblockdns.core.dns.DnsMessages
+import io.github.clawfabriceh92.adblockdns.core.dns.DnsQuestion
 import io.github.clawfabriceh92.adblockdns.core.filter.BlockSource
 import io.github.clawfabriceh92.adblockdns.core.filter.FilterEngine
 import io.github.clawfabriceh92.adblockdns.core.filter.HashedDomainSet
@@ -32,6 +33,7 @@ class DnsPacketProcessorTest {
     )
     private var engine = FilterEngine(RuleMatcher.EMPTY, RuleMatcher.EMPTY, listOf(list))
     private val blocked = ArrayList<BlockedQuery>()
+    private val forwarded = ArrayList<String>()
     private var upstreamCalls = 0
     private var upstreamAnswer: (ByteArray) -> ByteArray = { q -> TestDns.response(q, listOf(TestDns.a(203, 0, 113, 7))) }
 
@@ -48,6 +50,10 @@ class DnsPacketProcessorTest {
         listener = object : DnsPacketProcessor.Listener {
             override fun onBlocked(query: BlockedQuery, packet: UdpPacket) {
                 blocked += query
+            }
+
+            override fun onForwarded(question: DnsQuestion, packet: UdpPacket) {
+                forwarded += "${question.name}/${question.type}/${packet.sourcePort}"
             }
         },
         clock = { 1_000L },
@@ -76,6 +82,13 @@ class DnsPacketProcessorTest {
         assertEquals("doubleclick.net", event.matched)
         assertEquals(BlockSource.FromList("hagezi-pro", ListCategory.ADS_TRACKING), event.source)
         assertEquals(1_000L, event.timestamp)
+    }
+
+    @Test
+    fun `requete transmise signalee avec sa question et son paquet, pas les requetes bloquees`() {
+        processor.process(queryPacket("example.com"))
+        processor.process(queryPacket("securepubads.g.doubleclick.net"))
+        assertEquals(listOf("example.com/1/41000"), forwarded)
     }
 
     @Test

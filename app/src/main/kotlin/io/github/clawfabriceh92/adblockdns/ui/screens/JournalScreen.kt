@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.clawfabriceh92.adblockdns.data.RecentDomain
 import io.github.clawfabriceh92.adblockdns.data.db.AppRef
 import io.github.clawfabriceh92.adblockdns.data.db.BlockedEventEntity
 import io.github.clawfabriceh92.adblockdns.ui.AppViewModelFactory
@@ -44,15 +45,20 @@ import io.github.clawfabriceh92.adblockdns.ui.components.AppBadge
 import io.github.clawfabriceh92.adblockdns.ui.components.CategoryTag
 import io.github.clawfabriceh92.adblockdns.ui.components.MutedText
 import io.github.clawfabriceh92.adblockdns.ui.components.ScreenTitle
+import io.github.clawfabriceh92.adblockdns.ui.components.SegmentedSelector
 import io.github.clawfabriceh92.adblockdns.ui.components.SectionCard
 import io.github.clawfabriceh92.adblockdns.ui.formatTime
 import io.github.clawfabriceh92.adblockdns.ui.plural
 import io.github.clawfabriceh92.adblockdns.ui.queryTypeLabel
 import kotlinx.coroutines.launch
 
+private enum class JournalTab { BLOQUEES, AUTORISEES }
+
 /**
  * Journal des requêtes bloquées. « Autoriser » ajoute le domaine à la liste blanche (effet
  * immédiat, sans redémarrage) et retire ses entrées du journal ; « Annuler » défait les deux.
+ * L'onglet « Autorisées » montre les derniers domaines résolus (en mémoire seulement) :
+ * « Bloquer » y ajoute un domaine à la liste noire, pour une publicité passée entre les listes.
  */
 @Composable
 fun JournalScreen(
@@ -64,11 +70,20 @@ fun JournalScreen(
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     val selectedApp by viewModel.selectedApp.collectAsStateWithLifecycle()
     val whitelist by viewModel.whitelist.collectAsStateWithLifecycle()
+    val recent by viewModel.recent.collectAsStateWithLifecycle()
+    val recentApps by viewModel.recentApps.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableStateOf(JournalTab.BLOQUEES) }
     var search by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 4.dp)) {
-        item { ScreenTitle("Journal des blocages") }
+        item { ScreenTitle("Journal") }
+        item {
+            SegmentedSelector(listOf(JournalTab.BLOQUEES to "Bloquées", JournalTab.AUTORISEES to "Autorisées"), tab) {
+                tab = it
+                viewModel.onAppSelected(null)
+            }
+        }
         item {
             SectionCard(contentPadding = 12.dp) {
                 OutlinedTextField(
@@ -82,8 +97,46 @@ fun JournalScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(9.dp))
-                AppFilter(apps, selectedApp, viewModel::onAppSelected)
+                AppFilter(if (tab == JournalTab.BLOQUEES) apps else recentApps, selectedApp, viewModel::onAppSelected)
             }
+        }
+        if (tab == JournalTab.AUTORISEES) {
+            item {
+                MutedText(
+                    "Domaines résolus récemment, gardés en mémoire seulement et effacés à l'arrêt de la protection. " +
+                        "Une publicité passe ? Rechargez la page, puis bloquez ici son domaine.",
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+            if (recent.isEmpty()) {
+                item {
+                    MutedText(
+                        if (search.isBlank() && selectedApp == null) {
+                            "Aucun domaine récent : la protection est-elle active ?"
+                        } else {
+                            "Aucun domaine récent avec ce filtre."
+                        },
+                        modifier = Modifier.padding(vertical = 18.dp),
+                    )
+                }
+            } else {
+                items(recent, key = { "${it.domain}|${it.appPackage ?: it.appLabel}" }) { entry ->
+                    Column {
+                        RecentRow(
+                            entry = entry,
+                            onBlock = {
+                                scope.launch {
+                                    val pattern = viewModel.block(entry.domain)
+                                    val undo = showUndoableMessage("${entry.domain} bloqué · ajouté à la liste noire", "Annuler")
+                                    if (undo) viewModel.undoBlock(pattern)
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                    }
+                }
+            }
+            return@LazyColumn
         }
         val list = events
         when {
@@ -147,6 +200,22 @@ private fun JournalRow(event: BlockedEventEntity, onAllow: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         OutlinedButton(onClick = onAllow, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
             Text("Autoriser", fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun RecentRow(entry: RecentDomain, onBlock: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        AppBadge(entry.appLabel, entry.appPackage)
+        Spacer(Modifier.width(11.dp))
+        Column(Modifier.weight(1f)) {
+            Text(entry.domain, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            MutedText("${formatTime(entry.lastSeen)} · ${entry.appLabel} · ${plural(entry.count, "requête")}")
+        }
+        Spacer(Modifier.width(8.dp))
+        OutlinedButton(onClick = onBlock, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+            Text("Bloquer", fontSize = 12.sp)
         }
     }
 }

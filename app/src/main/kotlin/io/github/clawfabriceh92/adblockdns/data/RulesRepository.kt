@@ -22,5 +22,7 @@ class RulesRepository(private val dao: RuleDao) {
 
     suspend fun allow(domain: String): String? = add(domain, RuleEntity.ALLOW)
 
+    suspend fun block(domain: String): String? = add(domain, RuleEntity.BLOCK)
+
     suspend fun remove(pattern: String, type: String) = dao.delete(pattern, type)
 }

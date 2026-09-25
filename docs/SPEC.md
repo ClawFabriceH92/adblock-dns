@@ -115,7 +115,9 @@ Ce qui diffère du cadrage, et pourquoi :
 Ajouts non prévus au cadrage : anti-camouflage CNAME (désactivable), domaine canari Firefox,
 refus immédiat du DNS sur TCP/DoT (RST), choix automatique d'une plage d'adresses libre pour le
 tunnel, relance après mise à jour de l'application, compatibilité VPN permanent d'Android,
-raccourci « Activer la protection », « Annuler » après « Autoriser ».
+raccourci « Activer la protection », « Annuler » après « Autoriser » ; le 25/09/2026, onglet
+« Autorisées » du Journal (domaines résolus récemment, en mémoire, bouton « Bloquer ») et liste
+hagezi Multi PRO++ en option.
 
 ## Définition du « fini » pour la v1.0
 

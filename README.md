@@ -15,11 +15,13 @@ chargent ni dans le navigateur, ni dans les applications.
   règles chargées, démarrage au boot, alertes (DNS privé Android en mode strict, erreur).
 - **Journal** : requêtes bloquées (heure, domaine, application, type, catégorie), recherche,
   filtre par application, bouton **« Autoriser »** (liste blanche immédiate, sans redémarrage)
-  avec **« Annuler »**.
+  avec **« Annuler »**. Onglet **« Autorisées »** : derniers domaines résolus par application
+  (300 au plus, en mémoire seulement, effacés à l'arrêt de la protection), avec un bouton
+  **« Bloquer »** pour une publicité passée entre les listes.
 - **Stats** : blocages par heure (24 h) ou par jour (7 j / 30 j), applications les plus bloquées,
   répartition par catégorie.
-- **Listes** : hagezi Multi PRO embarquée (active d'office), hagezi Threat Intelligence et
-  StevenBlack en option, import d'un fichier (domaines, hosts ou adblock), mise à jour à la
+- **Listes** : hagezi Multi PRO embarquée (active d'office), hagezi Multi PRO++ (plus stricte),
+  hagezi Threat Intelligence et StevenBlack en option, import d'un fichier (domaines, hosts ou adblock), mise à jour à la
   demande et automatique chaque semaine en Wi-Fi (activée par défaut, désactivable).
 - **Règles** : listes blanche et noire manuelles, jokers (`*.exemple.com`), URL collée acceptée.
 - **Réglages** : résolveur amont (DNS du téléphone, Cloudflare ou Quad9 chiffrés), démarrage au

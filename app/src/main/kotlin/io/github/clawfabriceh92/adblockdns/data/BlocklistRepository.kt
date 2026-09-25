@@ -57,6 +57,17 @@ object BlocklistCatalog {
         license = "GPL-3.0",
         homepage = "https://github.com/hagezi/dns-blocklists",
     )
+    val HAGEZI_PRO_PLUS = BlocklistDefinition(
+        id = "hagezi-pro-plus",
+        name = "HaGeZi Multi PRO++",
+        description = "Version plus stricte, à ajouter à la liste par défaut : bloque davantage de publicités et de traqueurs, " +
+            "avec plus de risques de gêner un site ou une application (selon son auteur).",
+        url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.plus-onlydomains.txt",
+        category = ListCategory.ADS_TRACKING,
+        enabledByDefault = false,
+        license = "GPL-3.0",
+        homepage = "https://github.com/hagezi/dns-blocklists",
+    )
     val HAGEZI_TIF = BlocklistDefinition(
         id = "hagezi-tif",
         name = "HaGeZi Threat Intelligence (medium)",
@@ -88,7 +99,7 @@ object BlocklistCatalog {
         homepage = null,
     )
 
-    val ALL = listOf(HAGEZI_PRO, HAGEZI_TIF, STEVENBLACK, CUSTOM)
+    val ALL = listOf(HAGEZI_PRO, HAGEZI_PRO_PLUS, HAGEZI_TIF, STEVENBLACK, CUSTOM)
 
     fun byId(id: String): BlocklistDefinition? = ALL.firstOrNull { it.id == id }
 }
